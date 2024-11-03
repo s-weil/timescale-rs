@@ -1,0 +1,10 @@
+[workspace]
+members = ["data-population"]
+
+resolver = "2"
+
+[profile.release]
+stripe = true # strip symbols
+opt-level = "s" # size
+lto = true
+codegen-units = 1
