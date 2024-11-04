@@ -1,5 +1,5 @@
 [workspace]
-members = ["data-population"]
+members = [ "common","data-population"]
 
 resolver = "2"
 

@@ -8,7 +8,8 @@ SET search_path TO stocks;
 CREATE TABLE STOCK_DEFINITIONS (
     id SERIAL NOT NULL,
     ticker TEXT not null,
-    PRIMARY KEY (id)
+    PRIMARY KEY (id),
+    UNIQUE (ticker)
 );
 
 -- Create a table without timescaledb...
