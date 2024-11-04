@@ -1,4 +1,4 @@
-use common::InsertableStockDefinition;
+use common::{InsertableStockDefinition, StockDefinition};
 use dotenv::dotenv;
 use sqlx::postgres::PgPoolOptions;
 
@@ -13,7 +13,7 @@ async fn main() -> Result<(), sqlx::Error> {
         std::env::var("DATABASE_URL").expect("expected .env variable `DATABASE_URL`");
 
     let pool = PgPoolOptions::new()
-        .max_connections(5)
+        .max_connections(8)
         .connect(&database_url)
         .await?;
 
@@ -43,6 +43,11 @@ async fn main() -> Result<(), sqlx::Error> {
         println!("Insert success: {}", result.is_ok());
     }
 
+    let stocks2: Vec<StockDefinition> = sqlx::query_as("SELECT * FROM stocks.stock_definitions")
+        .fetch_all(&pool)
+        .await?;
+
+    println!("loaded {} stocks", stocks2.len());
     // // TODO bulk insert
     // sqlx::query!(
     //     "INSERT INTO stock_definitions(ticker) SELECT * FROM UNNEST($1::text[])",

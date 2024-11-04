@@ -2,9 +2,10 @@
 name = "data-population"
 version = "0.1.0"
 edition = "2021"
+resolver = "2"
 
 [dependencies]
-sqlx = { version = "0.8.2", features = ["postgres", "runtime-tokio", "derive", "macros"] }
+sqlx = { workspace = true }
 tokio = { version = "1.41.0", features = ["full"] }
 dotenv = "0.15.0"
 common = { path = "../common"}

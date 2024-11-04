@@ -8,3 +8,6 @@ stripe = true # strip symbols
 opt-level = "s" # size
 lto = true
 codegen-units = 1
+
+[workspace.dependencies]
+sqlx = { version = "0.8.2", features = ["postgres", "runtime-tokio-rustls", "derive", "macros"] }
