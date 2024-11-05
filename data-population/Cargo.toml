@@ -6,6 +6,7 @@ resolver = "2"
 
 [dependencies]
 sqlx = { workspace = true }
+chrono = { workspace = true }
 tokio = { version = "1.41.0", features = ["full"] }
 dotenv = "0.15.0"
-common = { path = "../common"}
+common = { path = "../common" }

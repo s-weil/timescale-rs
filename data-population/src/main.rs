@@ -1,8 +1,10 @@
+use chrono::Duration;
 use common::{InsertableStockDefinition, StockDefinition};
 use dotenv::dotenv;
 use sqlx::postgres::PgPoolOptions;
+use sqlx::types::chrono::NaiveDate;
 
-// TODO run db migrations
+// TODO run db migrations -> sqlxcli
 // TODO add cli to parse parameters for nr stocks, dates, etc
 
 #[tokio::main]
@@ -43,19 +45,34 @@ async fn main() -> Result<(), sqlx::Error> {
         println!("Insert success: {}", result.is_ok());
     }
 
-    let stocks2: Vec<StockDefinition> = sqlx::query_as("SELECT * FROM stocks.stock_definitions")
-        .fetch_all(&pool)
-        .await?;
+    let stocks2: Vec<StockDefinition> =
+        sqlx::query_as!(StockDefinition, "SELECT * FROM stocks.stock_definitions")
+            .fetch_all(&pool)
+            .await?;
 
     println!("loaded {} stocks", stocks2.len());
-    // // TODO bulk insert
-    // sqlx::query!(
-    //     "INSERT INTO stock_definitions(ticker) SELECT * FROM UNNEST($1::text[])",
-    //     &stocks[..]
-    // )
-    // .execute(&pool)
-    // .await
-    // .unwrap();
+
+    // TODO bulk insert for stock prices
+
+    let end_date = NaiveDate::from_ymd_opt(2024, 12, 12).unwrap();
+    let dates: Vec<NaiveDate> = (0..1000)
+        .into_iter()
+        .map(|d| end_date.clone() + Duration::days(-d))
+        .collect();
+    let close_prices: Vec<f64> = (0..1000)
+        .into_iter()
+        .map(|d| 0.0 + 0.00001 * d as f64)
+        .collect(); // todo randomization based on stock idx;
+    let ids: Vec<i32> = (0..1000).into_iter().map(|d| 1).collect();
+
+    // https://www.alxolr.com/articles/rust-bulk-insert-to-postgre-sql-using-sqlx
+    let result = sqlx::query(
+        "INSERT INTO stocks.stock_timeseries(stock_id, dt, close) SELECT * FROM UNNEST($1::INTEGER[], $2::DATE[], $3::NUMERIC[])")
+        .bind(&ids).bind(&dates).bind(&close_prices)
+        .execute(&pool)
+        .await;
+
+    println!("bulk inserted close prices {:?}", result);
 
     println!("Finished");
 

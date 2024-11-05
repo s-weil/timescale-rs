@@ -1,5 +1,5 @@
 [workspace]
-members = [ "common","data-population"]
+members = ["common", "data-population"]
 
 resolver = "2"
 
@@ -10,4 +10,5 @@ lto = true
 codegen-units = 1
 
 [workspace.dependencies]
-sqlx = { version = "0.8.2", features = ["postgres", "runtime-tokio-rustls", "derive", "macros"] }
+sqlx = { version = "0.8.2", features = ["postgres", "runtime-tokio-rustls", "derive", "macros", "chrono"] }
+chrono = "0.4.38"
