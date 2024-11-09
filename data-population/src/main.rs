@@ -3,6 +3,10 @@ use common::{InsertableStockDefinition, StockDefinition};
 use dotenv::dotenv;
 use sqlx::postgres::PgPoolOptions;
 use sqlx::types::chrono::NaiveDate;
+use sqlx::{Pool, Postgres};
+use std::error::Error;
+use std::sync::Arc;
+use stopwatch::Stopwatch;
 
 // TODO run db migrations -> sqlxcli
 // TODO add cli to parse parameters for nr stocks, dates, etc
@@ -31,7 +35,7 @@ async fn main() -> Result<(), sqlx::Error> {
 
     // let connection = pool.acquire().await?;
 
-    let stocks: Vec<InsertableStockDefinition> = (0..100)
+    let stocks: Vec<InsertableStockDefinition> = (0..500)
         .into_iter()
         .map(|idx| InsertableStockDefinition::new(idx.to_string()))
         .collect();
@@ -45,12 +49,14 @@ async fn main() -> Result<(), sqlx::Error> {
         println!("Insert success: {}", result.is_ok());
     }
 
-    let stocks2: Vec<StockDefinition> =
+    let stock_registry: Vec<StockDefinition> =
         sqlx::query_as!(StockDefinition, "SELECT * FROM stocks.stock_definitions")
             .fetch_all(&pool)
             .await?;
 
-    println!("loaded {} stocks", stocks2.len());
+    println!("loaded {} stocks", stock_registry.len());
+
+    let stock_registry = Arc::new(stock_registry);
 
     // TODO bulk insert for stock prices
 
@@ -59,22 +65,76 @@ async fn main() -> Result<(), sqlx::Error> {
         .into_iter()
         .map(|d| end_date.clone() + Duration::days(-d))
         .collect();
-    let close_prices: Vec<f64> = (0..1000)
-        .into_iter()
-        .map(|d| 0.0 + 0.00001 * d as f64)
-        .collect(); // todo randomization based on stock idx;
-    let ids: Vec<i32> = (0..1000).into_iter().map(|d| 1).collect();
+    let dates = Arc::new(dates);
 
-    // https://www.alxolr.com/articles/rust-bulk-insert-to-postgre-sql-using-sqlx
-    let result = sqlx::query(
-        "INSERT INTO stocks.stock_timeseries(stock_id, dt, close) SELECT * FROM UNNEST($1::INTEGER[], $2::DATE[], $3::NUMERIC[])")
-        .bind(&ids).bind(&dates).bind(&close_prices)
-        .execute(&pool)
-        .await;
-
-    println!("bulk inserted close prices {:?}", result);
+    tokio::join!(
+        timescale_population(stock_registry.clone(), dates.clone(), &pool),
+        timeseries_population(stock_registry.clone(), dates.clone(), &pool),
+    );
 
     println!("Finished");
 
+    Ok(())
+}
+
+async fn timeseries_population(
+    stock_registry: Arc<Vec<StockDefinition>>,
+    date_grid: Arc<Vec<NaiveDate>>,
+    pool: &Pool<Postgres>,
+) -> Result<(), Box<dyn Error>> {
+    let sw = Stopwatch::start_new();
+    for stock in stock_registry.iter() {
+        let close_prices: Vec<f64> = (0..1000)
+            .into_iter()
+            .map(|d| 0.0 + 0.00001 * d as f64)
+            .collect(); // todo randomization based on stock idx;
+        let ids: Vec<i32> = (0..1000).into_iter().map(|d| stock.id).collect();
+
+        // https://www.alxolr.com/articles/rust-bulk-insert-to-postgre-sql-using-sqlx
+        let result = sqlx::query(
+            "INSERT INTO stocks.stock_timeseries(stock_id, dt, close)\
+             SELECT * FROM UNNEST($1::INTEGER[], $2::DATE[], $3::NUMERIC[])",
+        )
+        .bind(&ids)
+        .bind(&date_grid.as_ref())
+        .bind(&close_prices)
+        .execute(pool)
+        .await;
+
+        // println!("{}:{}", stock.id, result.is_ok())
+    }
+
+    println!("stock_timeseries within {} ms", sw.elapsed_ms());
+    Ok(())
+}
+
+async fn timescale_population(
+    stock_registry: Arc<Vec<StockDefinition>>,
+    date_grid: Arc<Vec<NaiveDate>>,
+    pool: &Pool<Postgres>,
+) -> Result<(), Box<dyn Error>> {
+    let sw = Stopwatch::start_new();
+    for stock in stock_registry.iter() {
+        let close_prices: Vec<f64> = (0..1000)
+            .into_iter()
+            .map(|d| 0.0 + 0.00001 * d as f64)
+            .collect(); // todo randomization based on stock idx;
+        let ids: Vec<i32> = (0..1000).into_iter().map(|d| stock.id).collect();
+
+        // https://www.alxolr.com/articles/rust-bulk-insert-to-postgre-sql-using-sqlx
+        let result = sqlx::query(
+            "INSERT INTO stocks.stock_timescale(stock_id, dt, close)\
+             SELECT * FROM UNNEST($1::INTEGER[], $2::DATE[], $3::NUMERIC[])",
+        )
+        .bind(&ids)
+        .bind(&date_grid.as_ref())
+        .bind(&close_prices)
+        .execute(pool)
+        .await;
+
+        // println!("{}:{}", stock.id, result.is_ok())
+    }
+
+    println!("stock_timescale within {} ms", sw.elapsed_ms());
     Ok(())
 }
