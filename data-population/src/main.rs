@@ -36,15 +36,13 @@ async fn main() -> Result<(), sqlx::Error> {
 
     assert_eq!(row.0, 150);
 
-    // let connection = pool.acquire().await?;
-
     let stocks: Vec<InsertableStockDefinition> = (0..n_stocks)
         .into_iter()
         .map(|idx| InsertableStockDefinition::new(idx.to_string()))
         .collect();
 
     for stock in stocks {
-        let result = sqlx::query("INSERT INTO stocks.stock_definitions (ticker) VALUES ($1);")
+        let _result = sqlx::query("INSERT INTO stocks.stock_definitions (ticker) VALUES ($1);")
             .bind(stock.ticker)
             // .bind(data.customer_id)
             .execute(&pool)
@@ -61,25 +59,33 @@ async fn main() -> Result<(), sqlx::Error> {
 
     let stock_registry = Arc::new(stock_registry);
 
-    // TODO bulk insert for stock prices
-
     let end_date = NaiveDate::from_ymd_opt(2024, 12, 31).unwrap();
     let dates: Vec<NaiveDate> = (0..n_prices)
         .into_iter()
         .map(|d| end_date.clone() + Duration::days(-d))
         .collect();
-    let dates = Arc::new(dates);
+    let date_grid = Arc::new(dates);
 
-    let close_prices: Vec<f64> = dates
+    let close_prices: Vec<f64> = date_grid
         .iter()
         .enumerate()
         .map(|(d, _)| 0.0 + 0.00001 * d as f64)
         .collect(); // todo randomization based on stock idx;
     let prices = Arc::new(close_prices);
 
-    tokio::join!(
-        timescale_population(stock_registry.clone(), dates.clone(), prices.clone(), &pool),
-        timeseries_population(stock_registry.clone(), dates.clone(), prices.clone(), &pool),
+    let _ = tokio::join!(
+        timescale_population(
+            stock_registry.clone(),
+            date_grid.clone(),
+            prices.clone(),
+            &pool
+        ),
+        timeseries_population(
+            stock_registry.clone(),
+            date_grid.clone(),
+            prices.clone(),
+            &pool
+        ),
     );
 
     println!("Finished");
@@ -98,7 +104,7 @@ async fn timeseries_population(
         let ids: Vec<i32> = date_grid.iter().map(|_| stock.id).collect();
 
         // https://www.alxolr.com/articles/rust-bulk-insert-to-postgre-sql-using-sqlx
-        let result = sqlx::query(
+        let _result = sqlx::query(
             "INSERT INTO stocks.stock_timeseries(stock_id, dt, close)\
              SELECT * FROM UNNEST($1::INTEGER[], $2::DATE[], $3::NUMERIC[])",
         )
@@ -126,7 +132,7 @@ async fn timescale_population(
         let ids: Vec<i32> = date_grid.iter().map(|_| stock.id).collect();
 
         // https://www.alxolr.com/articles/rust-bulk-insert-to-postgre-sql-using-sqlx
-        let result = sqlx::query(
+        let _result = sqlx::query(
             "INSERT INTO stocks.stock_timescale(stock_id, dt, close)\
              SELECT * FROM UNNEST($1::INTEGER[], $2::DATE[], $3::NUMERIC[])",
         )

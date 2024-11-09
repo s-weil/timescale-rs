@@ -1,4 +1,4 @@
-use sqlx::types::chrono::{NaiveDate, NaiveDateTime};
+use sqlx::types::chrono::NaiveDate;
 use sqlx::FromRow;
 
 #[derive(Debug, FromRow)]
@@ -21,6 +21,6 @@ impl InsertableStockDefinition {
 #[derive(Debug, FromRow)]
 pub struct StockPrice {
     pub stock_id: i32,
-    pub dt: NaiveDateTime,
+    pub dt: NaiveDate,
     pub close: f32,
 }

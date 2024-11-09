@@ -1,5 +1,5 @@
 [workspace]
-members = ["common", "data-population"]
+members = ["common", "data-population", "stock-api"]
 
 resolver = "2"
 
@@ -13,3 +13,5 @@ codegen-units = 1
 sqlx = { version = "0.8.2", features = ["postgres", "runtime-tokio-rustls", "derive", "macros", "chrono"] }
 chrono = "0.4.38"
 stopwatch = "0.0.7"
+tokio = { version = "1.41.0", features = ["full"] }
+dotenv = "0.15.0"

@@ -1,5 +1,5 @@
 [package]
-name = "data-population"
+name = "stock-api"
 version = "0.1.0"
 edition = "2021"
 resolver = "2"
@@ -11,3 +11,8 @@ stopwatch = { workspace = true }
 tokio = { workspace = true }
 dotenv = { workspace = true }
 common = { path = "../common" }
+
+axum = "0.7.7"
+serde = { version = "1.0.214", features = ["derive"] }
+tracing-subscriber = "0.3.18"
+tracing = "0.1.40"
