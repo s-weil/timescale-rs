@@ -15,6 +15,9 @@ use stopwatch::Stopwatch;
 async fn main() -> Result<(), sqlx::Error> {
     dotenv().ok();
 
+    let n_stocks = 1_000;
+    let n_prices = 2_000;
+
     let database_url =
         std::env::var("DATABASE_URL").expect("expected .env variable `DATABASE_URL`");
 
@@ -35,7 +38,7 @@ async fn main() -> Result<(), sqlx::Error> {
 
     // let connection = pool.acquire().await?;
 
-    let stocks: Vec<InsertableStockDefinition> = (0..500)
+    let stocks: Vec<InsertableStockDefinition> = (0..n_stocks)
         .into_iter()
         .map(|idx| InsertableStockDefinition::new(idx.to_string()))
         .collect();
@@ -46,7 +49,7 @@ async fn main() -> Result<(), sqlx::Error> {
             // .bind(data.customer_id)
             .execute(&pool)
             .await;
-        println!("Insert success: {}", result.is_ok());
+        // println!("Insert success: {}", result.is_ok());
     }
 
     let stock_registry: Vec<StockDefinition> =
@@ -60,16 +63,23 @@ async fn main() -> Result<(), sqlx::Error> {
 
     // TODO bulk insert for stock prices
 
-    let end_date = NaiveDate::from_ymd_opt(2024, 12, 12).unwrap();
-    let dates: Vec<NaiveDate> = (0..1000)
+    let end_date = NaiveDate::from_ymd_opt(2024, 12, 31).unwrap();
+    let dates: Vec<NaiveDate> = (0..n_prices)
         .into_iter()
         .map(|d| end_date.clone() + Duration::days(-d))
         .collect();
     let dates = Arc::new(dates);
 
+    let close_prices: Vec<f64> = dates
+        .iter()
+        .enumerate()
+        .map(|(d, _)| 0.0 + 0.00001 * d as f64)
+        .collect(); // todo randomization based on stock idx;
+    let prices = Arc::new(close_prices);
+
     tokio::join!(
-        timescale_population(stock_registry.clone(), dates.clone(), &pool),
-        timeseries_population(stock_registry.clone(), dates.clone(), &pool),
+        timescale_population(stock_registry.clone(), dates.clone(), prices.clone(), &pool),
+        timeseries_population(stock_registry.clone(), dates.clone(), prices.clone(), &pool),
     );
 
     println!("Finished");
@@ -80,15 +90,12 @@ async fn main() -> Result<(), sqlx::Error> {
 async fn timeseries_population(
     stock_registry: Arc<Vec<StockDefinition>>,
     date_grid: Arc<Vec<NaiveDate>>,
+    prices: Arc<Vec<f64>>,
     pool: &Pool<Postgres>,
 ) -> Result<(), Box<dyn Error>> {
     let sw = Stopwatch::start_new();
     for stock in stock_registry.iter() {
-        let close_prices: Vec<f64> = (0..1000)
-            .into_iter()
-            .map(|d| 0.0 + 0.00001 * d as f64)
-            .collect(); // todo randomization based on stock idx;
-        let ids: Vec<i32> = (0..1000).into_iter().map(|d| stock.id).collect();
+        let ids: Vec<i32> = date_grid.iter().map(|_| stock.id).collect();
 
         // https://www.alxolr.com/articles/rust-bulk-insert-to-postgre-sql-using-sqlx
         let result = sqlx::query(
@@ -97,7 +104,7 @@ async fn timeseries_population(
         )
         .bind(&ids)
         .bind(&date_grid.as_ref())
-        .bind(&close_prices)
+        .bind(&prices.as_ref())
         .execute(pool)
         .await;
 
@@ -111,15 +118,12 @@ async fn timeseries_population(
 async fn timescale_population(
     stock_registry: Arc<Vec<StockDefinition>>,
     date_grid: Arc<Vec<NaiveDate>>,
+    prices: Arc<Vec<f64>>,
     pool: &Pool<Postgres>,
 ) -> Result<(), Box<dyn Error>> {
     let sw = Stopwatch::start_new();
     for stock in stock_registry.iter() {
-        let close_prices: Vec<f64> = (0..1000)
-            .into_iter()
-            .map(|d| 0.0 + 0.00001 * d as f64)
-            .collect(); // todo randomization based on stock idx;
-        let ids: Vec<i32> = (0..1000).into_iter().map(|d| stock.id).collect();
+        let ids: Vec<i32> = date_grid.iter().map(|_| stock.id).collect();
 
         // https://www.alxolr.com/articles/rust-bulk-insert-to-postgre-sql-using-sqlx
         let result = sqlx::query(
@@ -128,7 +132,7 @@ async fn timescale_population(
         )
         .bind(&ids)
         .bind(&date_grid.as_ref())
-        .bind(&close_prices)
+        .bind(&prices.as_ref())
         .execute(pool)
         .await;
 
