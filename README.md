@@ -14,6 +14,10 @@ Adjust the `docker-compose.yml` and `.env` file, then run
 
 ```bash
 docker-compose up -d
+
+# or alternatively
+# docker run --name postgres_db --env POSTGRES_USER=pgadmin POSTGRES_PASSWORD=pw --volume pg_data:/var/lib/postgresql/data --publish 5432:5432 -d postgres
+
 ```
 
 The migration scripts need to be run manually too (for now).
