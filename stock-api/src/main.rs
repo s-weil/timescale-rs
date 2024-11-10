@@ -9,6 +9,20 @@ use std::time::Duration;
 use tokio::net::TcpListener;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
+/// Utility function for mapping any error into a `500 Internal Server Error`
+/// response.
+fn internal_error<E: Error>(err: E) -> (StatusCode, String) {
+    tracing::error!("{}", err);
+    (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
+}
+
+async fn health(State(pool): State<PgPool>) -> Result<String, (StatusCode, String)> {
+    sqlx::query_scalar("select 'hello world from pg'")
+        .fetch_one(&pool)
+        .await
+        .map_err(internal_error)
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     tracing_subscriber::registry()
@@ -34,6 +48,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .route("/health", get(health))
         .route("/api/stocks", get(stocks))
         .route("/api/stocks/:stock_id/time-series", get(time_series))
+        .route("/api/stocks/:stock_id/time-scale", get(time_scale))
         .with_state(pool);
 
     let listener = TcpListener::bind("0.0.0.0:8000").await?;
@@ -42,13 +57,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .await
         .expect("Server start on port 8000");
     Ok(())
-}
-
-async fn health(State(pool): State<PgPool>) -> Result<String, (StatusCode, String)> {
-    sqlx::query_scalar("select 'hello world from pg'")
-        .fetch_one(&pool)
-        .await
-        .map_err(internal_error)
 }
 
 #[derive(Debug, Deserialize)]
@@ -94,13 +102,6 @@ async fn stocks(
     Ok(Json(registry))
 }
 
-/// Utility function for mapping any error into a `500 Internal Server Error`
-/// response.
-fn internal_error<E: Error>(err: E) -> (StatusCode, String) {
-    tracing::error!("{}", err);
-    (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
-}
-
 /// ```curl -G localhost:8000/stocks/42/time-series```
 async fn time_series(
     State(pool): State<PgPool>,
@@ -110,6 +111,27 @@ async fn time_series(
 
     let ts: Vec<StockPrice> =
         sqlx::query_as("SELECT * FROM stocks.stock_timeseries WHERE stock_id = $1 ORDER BY dt")
+            .bind(stock_id)
+            .fetch_all(&pool)
+            .await
+            .map_err(internal_error)?;
+
+    let prices: Vec<Price> = ts.into_iter().map(Price::from).collect();
+
+    tracing::debug!("loaded {} stock prices", prices.len());
+
+    Ok(Json(prices))
+}
+
+/// ```curl -G localhost:8000/stocks/42/time-scale```
+async fn time_scale(
+    State(pool): State<PgPool>,
+    Path(stock_id): Path<i32>,
+) -> Result<Json<Vec<Price>>, (StatusCode, String)> {
+    tracing::debug!("requested time-scale for id = {}", stock_id);
+
+    let ts: Vec<StockPrice> =
+        sqlx::query_as("SELECT * FROM stocks.stock_timescale WHERE stock_id = $1 ORDER BY dt")
             .bind(stock_id)
             .fetch_all(&pool)
             .await
