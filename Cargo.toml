@@ -10,10 +10,11 @@ lto = true
 codegen-units = 1
 
 [workspace.dependencies]
-sqlx = { version = "0.8.2", features = ["postgres", "runtime-tokio-rustls", "any", "derive", "macros", "chrono"] }
-chrono = "0.4.38"
+sqlx = { version = "0.8.2", features = ["postgres", "runtime-tokio-rustls", "any", "derive", "macros", "chrono", "bigdecimal"] }
+chrono = { version = "0.4.1", features = ["serde"] }
 stopwatch = "0.0.7"
 tokio = { version = "1.41.0", features = ["full"] }
 dotenv = "0.15.0"
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
+serde = { version = "1.0.214", features = ["derive"] }

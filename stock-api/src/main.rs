@@ -1,6 +1,6 @@
-use axum::extract::Query;
+use axum::extract::{Path, Query};
 use axum::{extract::State, http::StatusCode, routing::get, Json, Router};
-use common::StockDefinition;
+use common::{Price, StockDefinition, StockPrice};
 use dotenv::dotenv;
 use serde::Deserialize;
 use sqlx::postgres::{PgPool, PgPoolOptions};
@@ -31,9 +31,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     // build our application with some routes
     let app = Router::new()
-        .route("/", get(using_connection_pool_extractor))
-        // .route("/stocks", get(stock_registry))
-        .route("/stocks", get(stocks))
+        .route("/health", get(health))
+        .route("/api/stocks", get(stocks))
+        .route("/api/stocks/:stock_id/time-series", get(time_series))
         .with_state(pool);
 
     let listener = TcpListener::bind("0.0.0.0:8000").await?;
@@ -44,9 +44,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-async fn using_connection_pool_extractor(
-    State(pool): State<PgPool>,
-) -> Result<String, (StatusCode, String)> {
+async fn health(State(pool): State<PgPool>) -> Result<String, (StatusCode, String)> {
     sqlx::query_scalar("select 'hello world from pg'")
         .fetch_one(&pool)
         .await
@@ -61,7 +59,7 @@ struct StockParams {
     ticker: Option<String>,
 }
 
-/// Call ```curl -G localhost:8000/stocks -d stockId=21``` for a specific stock, or,
+/// Call ```curl -G localhost:8000/stocks -d stockId=42``` for a specific stock, or,
 /// ```curl -G localhost:8000/stocks``` for the complete registry.
 async fn stocks(
     State(pool): State<PgPool>,
@@ -101,4 +99,25 @@ async fn stocks(
 fn internal_error<E: Error>(err: E) -> (StatusCode, String) {
     tracing::error!("{}", err);
     (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
+}
+
+/// ```curl -G localhost:8000/stocks/42/time-series```
+async fn time_series(
+    State(pool): State<PgPool>,
+    Path(stock_id): Path<i32>,
+) -> Result<Json<Vec<Price>>, (StatusCode, String)> {
+    tracing::debug!("requested time-series for id = {}", stock_id);
+
+    let ts: Vec<StockPrice> =
+        sqlx::query_as("SELECT * FROM stocks.stock_timeseries WHERE stock_id = $1 ORDER BY dt")
+            .bind(stock_id)
+            .fetch_all(&pool)
+            .await
+            .map_err(internal_error)?;
+
+    let prices: Vec<Price> = ts.into_iter().map(Price::from).collect();
+
+    tracing::debug!("loaded {} stock prices", prices.len());
+
+    Ok(Json(prices))
 }
