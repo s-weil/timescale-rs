@@ -1,10 +1,6 @@
-use axum::{
-    extract::{FromRef, FromRequestParts, State},
-    http::{request::Parts, StatusCode},
-    routing::get,
-    Router,
-};
-use common::InsertableStockDefinition;
+use axum::extract::Query;
+use axum::{extract::State, http::StatusCode, routing::get, Json, Router};
+use common::StockDefinition;
 use dotenv::dotenv;
 use sqlx::postgres::{PgPool, PgPoolOptions};
 use std::error::Error;
@@ -35,6 +31,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // build our application with some routes
     let app = Router::new()
         .route("/", get(using_connection_pool_extractor))
+        // .route("/stocks", get(stock_registry))
+        .route("/stocks", get(stock))
         .with_state(pool);
 
     let listener = TcpListener::bind("0.0.0.0:8000").await?;
@@ -54,11 +52,37 @@ async fn using_connection_pool_extractor(
         .map_err(internal_error)
 }
 
+// TODO use DTO
+async fn stock_registry(
+    State(pool): State<PgPool>,
+) -> Result<Json<Vec<StockDefinition>>, (StatusCode, String)> {
+    let registry: Vec<StockDefinition> =
+        sqlx::query_as!(StockDefinition, "SELECT * FROM stocks.stock_definitions")
+            .fetch_all(&pool)
+            .await
+            .map_err(internal_error)?;
+
+    tracing::debug!("loaded {} stock definitions", registry.len());
+
+    Ok(Json(registry))
+}
+
+// TODO use DTO
+async fn stock(
+    State(pool): State<PgPool>,
+    Query(stock_id): Query<i32>,
+) -> Result<Json<StockDefinition>, (StatusCode, String)> {
+    let stock = sqlx::query_as("SELECT * FROM stocks.stock_definitions WHERE id = $1")
+        .bind(stock_id)
+        .fetch_one(&pool)
+        .await
+        .map_err(internal_error)?;
+
+    Ok(Json(stock))
+}
+
 /// Utility function for mapping any error into a `500 Internal Server Error`
 /// response.
-fn internal_error<E>(err: E) -> (StatusCode, String)
-where
-    E: std::error::Error,
-{
+fn internal_error<E: Error>(err: E) -> (StatusCode, String) {
     (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
 }

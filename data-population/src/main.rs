@@ -7,7 +7,8 @@ use sqlx::{Pool, Postgres};
 use std::error::Error;
 use std::sync::Arc;
 use stopwatch::Stopwatch;
-use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+
 // TODO run db migrations -> sqlxcli
 // TODO add cli to parse parameters for nr stocks, dates, etc
 
@@ -45,17 +46,15 @@ async fn main() -> Result<(), sqlx::Error> {
     assert_eq!(row.0, 150);
 
     let stocks: Vec<InsertableStockDefinition> = (0..n_stocks)
-        // .into_iter()
         .map(|idx| InsertableStockDefinition::new(idx.to_string()))
         .collect();
 
     for stock in stocks {
         let _result = sqlx::query("INSERT INTO stocks.stock_definitions (ticker) VALUES ($1);")
             .bind(stock.ticker)
-            // .bind(data.customer_id)
             .execute(&pool)
             .await;
-        // println!("Insert success: {}", result.is_ok());
+        // tracing::debug!("Insert success: {}", result.is_ok());
     }
 
     let stock_registry: Vec<StockDefinition> =
@@ -69,7 +68,6 @@ async fn main() -> Result<(), sqlx::Error> {
 
     let end_date = NaiveDate::from_ymd_opt(2024, 12, 31).unwrap();
     let dates: Vec<NaiveDate> = (0..n_prices)
-        // .into_iter()
         .map(|d| end_date + Duration::days(-d))
         .collect();
     let date_grid = Arc::new(dates);
@@ -149,8 +147,6 @@ async fn timescale_population(
         .bind(prices.as_ref())
         .execute(pool)
         .await;
-
-        // println!("{}:{}", stock.id, result.is_ok())
     }
 
     tracing::debug!("stock_timescale within {} ms", sw.elapsed_ms());

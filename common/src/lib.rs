@@ -1,3 +1,4 @@
+use serde::Serialize;
 use sqlx::types::chrono::NaiveDate;
 use sqlx::FromRow;
 
@@ -6,7 +7,7 @@ pub struct InsertableStockDefinition {
     pub ticker: String,
 }
 
-#[derive(Debug, FromRow)]
+#[derive(Debug, FromRow, Serialize)]
 pub struct StockDefinition {
     pub id: i32,
     pub ticker: String,

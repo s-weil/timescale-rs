@@ -6,3 +6,4 @@ resolver = "2"
 
 [dependencies]
 sqlx = { workspace = true }
+serde = { version = "1.0.214", features = ["derive"] }
