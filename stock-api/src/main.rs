@@ -2,6 +2,7 @@ use axum::extract::Query;
 use axum::{extract::State, http::StatusCode, routing::get, Json, Router};
 use common::StockDefinition;
 use dotenv::dotenv;
+use serde::Deserialize;
 use sqlx::postgres::{PgPool, PgPoolOptions};
 use std::error::Error;
 use std::time::Duration;
@@ -32,7 +33,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let app = Router::new()
         .route("/", get(using_connection_pool_extractor))
         // .route("/stocks", get(stock_registry))
-        .route("/stocks", get(stock))
+        .route("/stocks", get(stocks))
         .with_state(pool);
 
     let listener = TcpListener::bind("0.0.0.0:8000").await?;
@@ -52,16 +53,28 @@ async fn using_connection_pool_extractor(
         .map_err(internal_error)
 }
 
-// TODO use DTO as response
-async fn stock(
-    State(pool): State<PgPool>,
-    id: Option<Query<i32>>,
-) -> Result<Json<Vec<StockDefinition>>, (StatusCode, String)> {
-    if let Some(Query(id)) = id {
-        tracing::debug!("requesting stock with id {id}");
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct StockParams {
+    // TODO support id search
+    stock_id: Option<i32>,
+    ticker: Option<String>,
+}
 
-        let stock = sqlx::query_as("SELECT * FROM stocks.stock_definitions WHERE id = $1")
-            .bind(id)
+/// Call ```curl -G localhost:8000/stocks -d stockId=21``` for a specific stock, or,
+/// ```curl -G localhost:8000/stocks``` for the complete registry.
+async fn stocks(
+    State(pool): State<PgPool>,
+    stock_params: Query<StockParams>,
+) -> Result<Json<Vec<StockDefinition>>, (StatusCode, String)> {
+    if let Query(StockParams {
+        ticker: Some(t), ..
+    }) = stock_params
+    {
+        tracing::debug!("requesting stock with ticker {t}");
+
+        let stock = sqlx::query_as("SELECT * FROM stocks.stock_definitions WHERE ticker = $1")
+            .bind(t)
             .fetch_one(&pool)
             .await
             .map_err(internal_error)?;
@@ -70,7 +83,7 @@ async fn stock(
         return Ok(Json(vec![stock]));
     }
 
-    tracing::debug!("no id provided {:?}", id);
+    tracing::debug!("no id provided {:?}", stock_params);
 
     let registry: Vec<StockDefinition> =
         sqlx::query_as!(StockDefinition, "SELECT * FROM stocks.stock_definitions")
