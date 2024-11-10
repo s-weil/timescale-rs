@@ -52,10 +52,26 @@ async fn using_connection_pool_extractor(
         .map_err(internal_error)
 }
 
-// TODO use DTO
-async fn stock_registry(
+// TODO use DTO as response
+async fn stock(
     State(pool): State<PgPool>,
+    id: Option<Query<i32>>,
 ) -> Result<Json<Vec<StockDefinition>>, (StatusCode, String)> {
+    if let Some(Query(id)) = id {
+        tracing::debug!("requesting stock with id {id}");
+
+        let stock = sqlx::query_as("SELECT * FROM stocks.stock_definitions WHERE id = $1")
+            .bind(id)
+            .fetch_one(&pool)
+            .await
+            .map_err(internal_error)?;
+
+        tracing::debug!("loaded stock {:?}", stock);
+        return Ok(Json(vec![stock]));
+    }
+
+    tracing::debug!("no id provided {:?}", id);
+
     let registry: Vec<StockDefinition> =
         sqlx::query_as!(StockDefinition, "SELECT * FROM stocks.stock_definitions")
             .fetch_all(&pool)
@@ -67,22 +83,9 @@ async fn stock_registry(
     Ok(Json(registry))
 }
 
-// TODO use DTO
-async fn stock(
-    State(pool): State<PgPool>,
-    Query(stock_id): Query<i32>,
-) -> Result<Json<StockDefinition>, (StatusCode, String)> {
-    let stock = sqlx::query_as("SELECT * FROM stocks.stock_definitions WHERE id = $1")
-        .bind(stock_id)
-        .fetch_one(&pool)
-        .await
-        .map_err(internal_error)?;
-
-    Ok(Json(stock))
-}
-
 /// Utility function for mapping any error into a `500 Internal Server Error`
 /// response.
 fn internal_error<E: Error>(err: E) -> (StatusCode, String) {
+    tracing::error!("{}", err);
     (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
 }
