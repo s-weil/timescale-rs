@@ -10,4 +10,7 @@ chrono = { workspace = true }
 stopwatch = { workspace = true }
 tokio = { workspace = true }
 dotenv = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
 common = { path = "../common" }

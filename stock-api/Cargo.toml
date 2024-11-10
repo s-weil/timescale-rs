@@ -10,9 +10,10 @@ chrono = { workspace = true }
 stopwatch = { workspace = true }
 tokio = { workspace = true }
 dotenv = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
 common = { path = "../common" }
 
 axum = "0.7.7"
 serde = { version = "1.0.214", features = ["derive"] }
-tracing-subscriber = "0.3.18"
-tracing = "0.1.40"

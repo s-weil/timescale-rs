@@ -7,12 +7,20 @@ use sqlx::{Pool, Postgres};
 use std::error::Error;
 use std::sync::Arc;
 use stopwatch::Stopwatch;
-
+use tracing_subscriber::layer::SubscriberExt;
 // TODO run db migrations -> sqlxcli
 // TODO add cli to parse parameters for nr stocks, dates, etc
 
 #[tokio::main]
 async fn main() -> Result<(), sqlx::Error> {
+    tracing_subscriber::registry()
+        .with(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| format!("{}=debug", env!("CARGO_CRATE_NAME")).into()),
+        )
+        .with(tracing_subscriber::fmt::layer())
+        .init();
+
     dotenv().ok();
 
     let n_stocks = 1_000;
@@ -26,7 +34,7 @@ async fn main() -> Result<(), sqlx::Error> {
         .connect(&database_url)
         .await?;
 
-    println!("Established connection pool to {database_url}");
+    tracing::debug!("Established connection pool to {database_url}");
 
     // Make a simple query to return the given parameter (use a question mark `?` instead of `$1` for MySQL/MariaDB)
     let row: (i64,) = sqlx::query_as("SELECT $1")
@@ -37,7 +45,7 @@ async fn main() -> Result<(), sqlx::Error> {
     assert_eq!(row.0, 150);
 
     let stocks: Vec<InsertableStockDefinition> = (0..n_stocks)
-        .into_iter()
+        // .into_iter()
         .map(|idx| InsertableStockDefinition::new(idx.to_string()))
         .collect();
 
@@ -55,14 +63,14 @@ async fn main() -> Result<(), sqlx::Error> {
             .fetch_all(&pool)
             .await?;
 
-    println!("loaded {} stocks", stock_registry.len());
+    tracing::debug!("loaded {} stocks", stock_registry.len());
 
     let stock_registry = Arc::new(stock_registry);
 
     let end_date = NaiveDate::from_ymd_opt(2024, 12, 31).unwrap();
     let dates: Vec<NaiveDate> = (0..n_prices)
-        .into_iter()
-        .map(|d| end_date.clone() + Duration::days(-d))
+        // .into_iter()
+        .map(|d| end_date + Duration::days(-d))
         .collect();
     let date_grid = Arc::new(dates);
 
@@ -88,7 +96,7 @@ async fn main() -> Result<(), sqlx::Error> {
         ),
     );
 
-    println!("Finished");
+    tracing::debug!("Finished");
 
     Ok(())
 }
@@ -109,15 +117,15 @@ async fn timeseries_population(
              SELECT * FROM UNNEST($1::INTEGER[], $2::DATE[], $3::NUMERIC[])",
         )
         .bind(&ids)
-        .bind(&date_grid.as_ref())
-        .bind(&prices.as_ref())
+        .bind(date_grid.as_ref())
+        .bind(prices.as_ref())
         .execute(pool)
         .await;
 
         // println!("{}:{}", stock.id, result.is_ok())
     }
 
-    println!("stock_timeseries within {} ms", sw.elapsed_ms());
+    tracing::debug!("stock_timeseries within {} ms", sw.elapsed_ms());
     Ok(())
 }
 
@@ -137,14 +145,14 @@ async fn timescale_population(
              SELECT * FROM UNNEST($1::INTEGER[], $2::DATE[], $3::NUMERIC[])",
         )
         .bind(&ids)
-        .bind(&date_grid.as_ref())
-        .bind(&prices.as_ref())
+        .bind(date_grid.as_ref())
+        .bind(prices.as_ref())
         .execute(pool)
         .await;
 
         // println!("{}:{}", stock.id, result.is_ok())
     }
 
-    println!("stock_timescale within {} ms", sw.elapsed_ms());
+    tracing::debug!("stock_timescale within {} ms", sw.elapsed_ms());
     Ok(())
 }

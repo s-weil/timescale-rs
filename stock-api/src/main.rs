@@ -4,29 +4,30 @@ use axum::{
     routing::get,
     Router,
 };
+use common::InsertableStockDefinition;
+use dotenv::dotenv;
 use sqlx::postgres::{PgPool, PgPoolOptions};
 use std::error::Error;
+use std::time::Duration;
 use tokio::net::TcpListener;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-
-use std::time::Duration;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     tracing_subscriber::registry()
-        // .with(
-        //     tracing_subscriber::EnvFilter::try_from_default_env()
-        //         .unwrap_or_else(|_| format!("{}=debug", env!("CARGO_CRATE_NAME")).into()),
-        // )
+        .with(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| format!("{}=debug", env!("CARGO_CRATE_NAME")).into()),
+        )
         .with(tracing_subscriber::fmt::layer())
         .init();
 
+    dotenv().ok();
     let database_url =
         std::env::var("DATABASE_URL").expect("expected .env variable `DATABASE_URL`");
 
-    // set up connection pool
     let pool = PgPoolOptions::new()
-        .max_connections(5)
+        .max_connections(8)
         .acquire_timeout(Duration::from_secs(3))
         .connect(&database_url)
         .await?;
@@ -36,8 +37,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .route("/", get(using_connection_pool_extractor))
         .with_state(pool);
 
-    // run it with hyper
-    let listener = TcpListener::bind("0.0.0.0:8000").await.unwrap();
+    let listener = TcpListener::bind("0.0.0.0:8000").await?;
     tracing::debug!("listening on {}", listener.local_addr().unwrap());
     axum::serve(listener, app)
         .await
