@@ -35,14 +35,13 @@ async fn main() -> Result<(), sqlx::Error> {
         .connect(&database_url)
         .await?;
 
-    tracing::debug!("Established connection pool to {database_url}");
+    tracing::debug!("Established connection pool");
 
-    // Make a simple query to return the given parameter (use a question mark `?` instead of `$1` for MySQL/MariaDB)
+    // test connection
     let row: (i64,) = sqlx::query_as("SELECT $1")
         .bind(150_i64)
         .fetch_one(&pool)
         .await?;
-
     assert_eq!(row.0, 150);
 
     let stocks: Vec<InsertableStockDefinition> = (0..n_stocks)
@@ -119,11 +118,9 @@ async fn timeseries_population(
         .bind(prices.as_ref())
         .execute(pool)
         .await;
-
-        // println!("{}:{}", stock.id, result.is_ok())
     }
 
-    tracing::debug!("stock_timeseries within {} ms", sw.elapsed_ms());
+    tracing::debug!(ms = sw.elapsed_ms(), "populated stock_timescale");
     Ok(())
 }
 
@@ -149,6 +146,6 @@ async fn timescale_population(
         .await;
     }
 
-    tracing::debug!("stock_timescale within {} ms", sw.elapsed_ms());
+    tracing::debug!(ms = sw.elapsed_ms(), "populated stock_timescale");
     Ok(())
 }

@@ -77,7 +77,7 @@ async fn stocks(
         ticker: Some(t), ..
     }) = stock_params
     {
-        tracing::debug!("requesting stock with ticker {t}");
+        tracing::debug!(ticker = t, "requesting stock");
 
         let stock = sqlx::query_as("SELECT * FROM stocks.stock_definitions WHERE ticker = $1")
             .bind(t)
@@ -85,11 +85,9 @@ async fn stocks(
             .await
             .map_err(internal_error)?;
 
-        tracing::debug!("loaded stock {:?}", stock);
+        tracing::debug!(stock=?stock, "loaded stock");
         return Ok(Json(vec![stock]));
     }
-
-    tracing::debug!("no id provided {:?}", stock_params);
 
     let registry: Vec<StockDefinition> =
         sqlx::query_as!(StockDefinition, "SELECT * FROM stocks.stock_definitions")
@@ -97,7 +95,7 @@ async fn stocks(
             .await
             .map_err(internal_error)?;
 
-    tracing::debug!("loaded {} stock definitions", registry.len());
+    tracing::debug!(n = registry.len(), "loaded stock definitions");
 
     Ok(Json(registry))
 }
@@ -107,7 +105,7 @@ async fn time_series(
     State(pool): State<PgPool>,
     Path(stock_id): Path<i32>,
 ) -> Result<Json<Vec<Price>>, (StatusCode, String)> {
-    tracing::debug!("requested time-series for id = {}", stock_id);
+    tracing::debug!(id = stock_id, "requested time-series");
 
     let ts: Vec<StockPrice> =
         sqlx::query_as("SELECT * FROM stocks.stock_timeseries WHERE stock_id = $1 ORDER BY dt")
@@ -128,7 +126,7 @@ async fn time_scale(
     State(pool): State<PgPool>,
     Path(stock_id): Path<i32>,
 ) -> Result<Json<Vec<Price>>, (StatusCode, String)> {
-    tracing::debug!("requested time-scale for id = {}", stock_id);
+    tracing::debug!(id = stock_id, "requested time-scale");
 
     let ts: Vec<StockPrice> =
         sqlx::query_as("SELECT * FROM stocks.stock_timescale WHERE stock_id = $1 ORDER BY dt")
@@ -139,7 +137,7 @@ async fn time_scale(
 
     let prices: Vec<Price> = ts.into_iter().map(Price::from).collect();
 
-    tracing::debug!("loaded {} stock prices", prices.len());
+    tracing::debug!(n = prices.len(), "loaded stock prices");
 
     Ok(Json(prices))
 }
