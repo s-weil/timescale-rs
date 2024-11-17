@@ -35,7 +35,24 @@ and run the API to serve requests
 cargo r --release --bin stock-api
 ```
 
-### TODO
+## Testing for performance
 
-k6 comparison
-criterion comparison
+### k6 comparison
+
+Download the `k6` [binaries](https://github.com/grafana/xk6-disruptor/releases) or install via
+
+```bash
+sudo dnf install https://dl.k6.io/rpm/repo.rpm
+sudo dnf install k6
+```
+
+For the setup of Grafana dashboards, follow
+this [post](https://medium.com/@nairgirish100/k6-with-docker-compose-influxdb-grafana-344ded339540).
+Once set up, run
+
+```bash
+# chmod 774 ./k6/run.sh
+source ./k6/run.sh
+```
+
+### criterion comparison
