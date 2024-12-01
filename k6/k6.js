@@ -15,6 +15,6 @@ export let options = {
 };
 
 export default function () {
-    let res = http.get("http://httpbin.org/");
+    let res = http.get("http://localhost:8000/stocks?stockId=42");
     check(res, {"status is 200": (r) => r.status === 200});
 }

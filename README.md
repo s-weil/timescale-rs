@@ -1,7 +1,7 @@
 # Test timescale-db
 
 Test project to compare [timescaledb](todo-link) versus tables optimized with respect to a time-series structure.
-The comparison is run over an `axum` web server to simulate real life problem.
+The comparison is run over an `axum` web server to simulate a real life problem.
 
 ### SetUp
 
@@ -47,7 +47,9 @@ sudo dnf install k6
 ```
 
 For the setup of Grafana dashboards, follow
-this [post](https://medium.com/@nairgirish100/k6-with-docker-compose-influxdb-grafana-344ded339540).
+this [post](https://medium.com/@nairgirish100/k6-with-docker-compose-influxdb-grafana-344ded339540). In particular
+import the dashboard with id `2587` in [Grafana](http://localhost:3000/) and
+select the source as “myinfluxdb (Default)” option and click on the Import button.
 Once set up, run
 
 ```bash
@@ -56,3 +58,5 @@ source ./k6/run.sh
 ```
 
 ### criterion comparison
+
+TODO
