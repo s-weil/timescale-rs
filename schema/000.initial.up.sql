@@ -21,6 +21,7 @@ CREATE TABLE STOCK_TIMESERIES
     close    NUMERIC NOT NULL,
     PRIMARY KEY (stock_id, dt),
     CONSTRAINT stock_id_fk FOREIGN KEY (stock_id) REFERENCES STOCK_DEFINITIONS (id)
+    -- TODO consider dedicated index on stock_id (though partially contained in PK); consider dt sorted
 );
 
 -- ... and a timescaledb table for comparison

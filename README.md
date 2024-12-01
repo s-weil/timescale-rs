@@ -1,6 +1,7 @@
 # Test timescale-db
 
-Test project to compare [timescaledb](todo-link) versus tables optimized with respect to a time-series structure.
+Test project to compare the postgres extension [timescaledb](https://www.timescale.com/) versus (postgres) tables
+optimized with respect to a time-series structure.
 The comparison is run over an `axum` web server to simulate a real life problem.
 
 ### SetUp
