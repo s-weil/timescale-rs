@@ -49,7 +49,7 @@ sudo dnf install k6
 For the setup of Grafana dashboards, follow
 this [post](https://medium.com/@nairgirish100/k6-with-docker-compose-influxdb-grafana-344ded339540). In particular
 import the dashboard with id `2587` in [Grafana](http://localhost:3000/) and
-select the source as “myinfluxdb (Default)” option and click on the Import button.
+add the source (Connections > Data sources) “influxdb” (http://influxdb:8086).
 Once set up, run
 
 ```bash
