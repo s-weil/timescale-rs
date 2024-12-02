@@ -1,5 +1,5 @@
 import http from "k6/http";
-import {check} from "k6";
+import check from "k6";
 
 export let options = {
     stages: [
@@ -15,6 +15,7 @@ export let options = {
 };
 
 export default function () {
-    let res = http.get("http://localhost:8000/stocks?stockId=42");
+    const randomStockId = Math.floor(1 + Math.random() * 499);
+    let res = http.get(`http://localhost:8000/stocks?stockId=${randomStockId}`);
     check(res, {"status is 200": (r) => r.status === 200});
 }
