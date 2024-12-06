@@ -36,6 +36,13 @@ and run the API to serve requests
 cargo r --release --bin stock-api
 ```
 
+To test if the API is properly up and running,
+
+```bash
+curl -G localhost:8000/api/stocks/41/time-series
+curl -G localhost:8000/api/stocks/41/time-scale
+```
+
 ## Testing for performance
 
 ### k6 comparison

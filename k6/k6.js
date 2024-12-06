@@ -16,6 +16,10 @@ export let options = {
 
 export default function () {
     const randomStockId = Math.floor(1 + Math.random() * 499);
-    let res = http.get(`http://localhost:8000/stocks?stockId=${randomStockId}`);
+    // let res = http.get(`localhost:8000/api/stocks?stockId=${randomStockId}`);
+    const url = `http://localhost:8000/api/stocks/${randomStockId}/time-series`
+    // const url = `http://localhost:8000/api/tocks/${randomStockId}/time-scale`
+    console.log(url);
+    let res = http.get(url);
     check(res, {"status is 200": (r) => r.status === 200});
 }
