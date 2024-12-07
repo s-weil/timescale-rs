@@ -1,6 +1,7 @@
 use chrono::NaiveDate;
 use serde::Serialize;
 use sqlx::FromRow;
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[derive(Debug, FromRow)]
 pub struct InsertableStockDefinition {
@@ -36,7 +37,17 @@ impl From<StockPrice> for Price {
     fn from(stock_price: StockPrice) -> Self {
         Self {
             v: stock_price.close,
-            dt: stock_price.dt, //.to_string(),
+            dt: stock_price.dt,
         }
     }
+}
+
+pub fn init_tracing() {
+    tracing_subscriber::registry()
+        .with(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| format!("{}=debug", env!("CARGO_CRATE_NAME")).into()),
+        )
+        .with(tracing_subscriber::fmt::layer())
+        .init();
 }

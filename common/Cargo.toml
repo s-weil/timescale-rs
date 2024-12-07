@@ -9,3 +9,5 @@ sqlx = { workspace = true }
 chrono = { workspace = true }
 serde = { workspace = true }
 bigdecimal = { version = "0.4.6", features = ["serde"] }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }

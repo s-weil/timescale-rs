@@ -1,5 +1,5 @@
 use chrono::Duration;
-use common::{InsertableStockDefinition, StockDefinition};
+use common::{init_tracing, InsertableStockDefinition, StockDefinition};
 use dotenv::dotenv;
 use sqlx::postgres::PgPoolOptions;
 use sqlx::types::chrono::NaiveDate;
@@ -14,14 +14,7 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
 async fn main() -> Result<(), sqlx::Error> {
-    tracing_subscriber::registry()
-        .with(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| format!("{}=debug", env!("CARGO_CRATE_NAME")).into()),
-        )
-        .with(tracing_subscriber::fmt::layer())
-        .init();
-
+    init_tracing();
     dotenv().ok();
 
     let n_stocks = 1_000;

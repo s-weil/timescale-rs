@@ -1,6 +1,6 @@
 use axum::extract::{Path, Query};
 use axum::{extract::State, http::StatusCode, routing::get, Json, Router};
-use common::{Price, StockDefinition, StockPrice};
+use common::{init_tracing, Price, StockDefinition, StockPrice};
 use dotenv::dotenv;
 use serde::Deserialize;
 use sqlx::postgres::{PgPool, PgPoolOptions};
@@ -25,17 +25,10 @@ async fn health(State(pool): State<PgPool>) -> Result<String, (StatusCode, Strin
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    tracing_subscriber::registry()
-        .with(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| format!("{}=debug", env!("CARGO_CRATE_NAME")).into()),
-        )
-        .with(tracing_subscriber::fmt::layer())
-        .init();
-
+    init_tracing();
     dotenv().ok();
     let database_url =
-        std::env::var("DATABASE_URL").expect("expected .env variable `DATABASE_URL`");
+        std::env::var("DATABASE_URL").inspect("expected .env variable `DATABASE_URL`")?;
 
     let pool = PgPoolOptions::new()
         .max_connections(8)
@@ -62,13 +55,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct StockParams {
-    // TODO support id search
-    stock_id: Option<i32>,
     ticker: Option<String>,
+    // TODO support search by id
+    #[allow(dead_code)]
+    stock_id: Option<i32>,
 }
 
-/// Call ```curl -G localhost:8000/stocks -d stockId=42``` for a specific stock, or,
-/// ```curl -G localhost:8000/stocks``` for the complete registry.
+/// Call ```curl -G localhost:8000/api/stocks -d stockId=42``` for a specific stock, or,
+/// ```curl -G localhost:8000/api/stocks``` for the complete registry.
 async fn stocks(
     State(pool): State<PgPool>,
     stock_params: Query<StockParams>,
@@ -100,7 +94,7 @@ async fn stocks(
     Ok(Json(registry))
 }
 
-/// ```curl -G localhost:8000/stocks/42/time-series```
+/// ```curl -G localhost:8000/api/stocks/42/time-series```
 async fn time_series(
     State(pool): State<PgPool>,
     Path(stock_id): Path<i32>,
@@ -121,7 +115,7 @@ async fn time_series(
     Ok(Json(prices))
 }
 
-/// ```curl -G localhost:8000/stocks/42/time-scale```
+/// ```curl -G localhost:8000/api/stocks/42/time-scale```
 async fn time_scale(
     State(pool): State<PgPool>,
     Path(stock_id): Path<i32>,
