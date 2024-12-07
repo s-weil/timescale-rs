@@ -27,7 +27,7 @@ The migration scripts need to be run manually too (for now).
 Finally populate the stock test data
 
 ```bash
-cargo r --release --bin data-population
+cargo r --release --bin data_population
 ```
 
 and run the API to serve requests
@@ -67,4 +67,17 @@ source ./k6/run.sh
 
 ### criterion comparison
 
-TODO
+We use [criterion.rs](https://bheisler.github.io/criterion.rs/) for benchmarking the `data_population` project.
+Run
+
+```bash
+cargo bench -p data_population
+```
+
+This can take a while... Adjust the `ts_length` or criterion's sample size to your convenience.
+Note that the timings include some noise for the setup.
+
+### TODOs
+
+- finalize criterion; stocks must be populated too
+- cluster table vs timescale aggregations

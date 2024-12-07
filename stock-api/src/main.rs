@@ -7,7 +7,6 @@ use sqlx::postgres::{PgPool, PgPoolOptions};
 use std::error::Error;
 use std::time::Duration;
 use tokio::net::TcpListener;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 /// Utility function for mapping any error into a `500 Internal Server Error`
 /// response.
@@ -28,7 +27,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     init_tracing();
     dotenv().ok();
     let database_url =
-        std::env::var("DATABASE_URL").inspect("expected .env variable `DATABASE_URL`")?;
+        std::env::var("DATABASE_URL").expect("expected .env variable `DATABASE_URL`");
 
     let pool = PgPoolOptions::new()
         .max_connections(8)

@@ -1,5 +1,5 @@
 [package]
-name = "data-population"
+name = "data_population"
 version = "0.1.0"
 edition = "2021"
 resolver = "2"
@@ -14,3 +14,10 @@ tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 
 common = { path = "../common" }
+
+[dev-dependencies]
+criterion = { version = "0.5.1", features = ["async", "async_tokio"] }
+
+[[bench]]
+name = "bench_data_population"
+harness = false

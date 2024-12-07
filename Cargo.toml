@@ -1,5 +1,5 @@
 [workspace]
-members = ["common", "data-population", "stock-api"]
+members = ["common", "data_population", "stock-api"]
 
 resolver = "2"
 

@@ -4,13 +4,29 @@ use dotenv::dotenv;
 use sqlx::postgres::PgPoolOptions;
 use sqlx::types::chrono::NaiveDate;
 use sqlx::{Pool, Postgres};
-use std::error::Error;
 use std::sync::Arc;
 use stopwatch::Stopwatch;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 // TODO run db migrations -> sqlxcli
 // TODO add cli to parse parameters for nr stocks, dates, etc
+
+pub async fn init_postgres_pool(url: &str) -> Result<Pool<Postgres>, sqlx::Error> {
+    let pool = PgPoolOptions::new().max_connections(8).connect(url).await?;
+    Ok(pool)
+}
+
+fn create_sample_date(n_prices: usize, end_date: NaiveDate) -> (Vec<NaiveDate>, Vec<f64>) {
+    let dates: Vec<NaiveDate> = (0..n_prices as i64)
+        .map(|d| end_date + Duration::days(-d))
+        .collect();
+
+    let close_prices: Vec<f64> = dates
+        .iter()
+        .enumerate()
+        .map(|(d, _)| 0.0 + 0.00001 * d as f64)
+        .collect(); // todo randomization based on stock idx;
+    (dates, close_prices)
+}
 
 #[tokio::main]
 async fn main() -> Result<(), sqlx::Error> {
@@ -23,10 +39,7 @@ async fn main() -> Result<(), sqlx::Error> {
     let database_url =
         std::env::var("DATABASE_URL").expect("expected .env variable `DATABASE_URL`");
 
-    let pool = PgPoolOptions::new()
-        .max_connections(8)
-        .connect(&database_url)
-        .await?;
+    let pool = init_postgres_pool(&database_url).await?;
 
     tracing::debug!("Established connection pool");
 
@@ -59,17 +72,10 @@ async fn main() -> Result<(), sqlx::Error> {
     let stock_registry = Arc::new(stock_registry);
 
     let end_date = NaiveDate::from_ymd_opt(2024, 12, 31).unwrap();
-    let dates: Vec<NaiveDate> = (0..n_prices)
-        .map(|d| end_date + Duration::days(-d))
-        .collect();
-    let date_grid = Arc::new(dates);
+    let (dates, prices) = create_sample_date(n_prices, end_date);
 
-    let close_prices: Vec<f64> = date_grid
-        .iter()
-        .enumerate()
-        .map(|(d, _)| 0.0 + 0.00001 * d as f64)
-        .collect(); // todo randomization based on stock idx;
-    let prices = Arc::new(close_prices);
+    let date_grid = Arc::new(dates);
+    let prices = Arc::new(prices);
 
     let _ = tokio::join!(
         timescale_population(
@@ -96,7 +102,7 @@ async fn timeseries_population(
     date_grid: Arc<Vec<NaiveDate>>,
     prices: Arc<Vec<f64>>,
     pool: &Pool<Postgres>,
-) -> Result<(), Box<dyn Error>> {
+) -> Result<(), sqlx::Error> {
     let sw = Stopwatch::start_new();
     for stock in stock_registry.iter() {
         let ids: Vec<i32> = date_grid.iter().map(|_| stock.id).collect();
@@ -122,7 +128,7 @@ async fn timescale_population(
     date_grid: Arc<Vec<NaiveDate>>,
     prices: Arc<Vec<f64>>,
     pool: &Pool<Postgres>,
-) -> Result<(), Box<dyn Error>> {
+) -> Result<(), sqlx::Error> {
     let sw = Stopwatch::start_new();
     for stock in stock_registry.iter() {
         let ids: Vec<i32> = date_grid.iter().map(|_| stock.id).collect();
