@@ -22,6 +22,7 @@ Cargo.lock
 
 db_data
 postgres
+.env
 
 # IDE
 timmescale-rs.iml
